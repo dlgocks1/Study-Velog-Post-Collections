@@ -204,29 +204,8 @@ Job내에서 해당 연산자를 구현해 주고 있다.
 
 `CoroutineScope.coroutineContext`에는 coroutine의 실행을 위한 여러가지 정보가 담기지만, 가장 중요한 것은 coroutine의 `Job`을 저장하는 것이다. `Job`은 하나의 `CoroutineContext.Element`이고, `CoroutineScope.coroutineContext`에는 반드시 Job이 포함되어 있어야만 한다
 
-생성된 새로운 newContext 즉 parentContext에 대한 잡을 생성하기위해 `AbstractCoroutine`의 생성자에서는 부모의 Job에 자식의 Job을 더해주고있다. 
+> 생성된 새로운 newContext 즉 parentContext에 대한 잡을 생성하기위해 `AbstractCoroutine`의 생성자에서는 부모의 Job에 자식의 Job을 더해주고있다. 
 `initParentJob(parentContext[Job])` 
-
-### Structured Concurrency의 근거
-
-이를 보았을 때 `위에서 코루틴에서의 예외는 기본적으로 parent job을 취소한다.`가 무슨 말인지 알 수 있다.
-
-코루틴은 생성될 때 부모의 CorocutineScope.coroutineContext 및 생성되는 코루틴의 Context를 더하여 새로운 `newContext`를 생성한다. 코루틴이 생성될 때는 생성된 newContext, 즉 Job과 부모의 Job에 자식의 Job을 더한다 
-
-이렇게 생성된 기본 코루틴의 추상클래스 `AbstractCoroutine`가 상속받는 JobSupport에서는 에러핸들링을 다음과 같이 제공하고있다.
-```
-@JsName("handlesExceptionF")
-private fun handlesException(): Boolean {
-	var parentJob = (parentHandle as? ChildHandleNode)?.job ?: return false
-	while (true) {
-		if (parentJob.handlesException) return true
-		parentJob = (parentJob.parentHandle as? ChildHandleNode)?.job ?: return false
-	}
-}
-```
-while문을 통해 자신 또는 부모들의 Job이 exception에 대한 handler를 제공하고 있는지를 반환한다.
-
-Job트리를 구성함으로써 해당 부모의 job까지 트리 구조를 통해 연결할 수 있기 때문에 오류가 전파되는 것이다.
 
 Job은 부모-자식의 트리형태의 예는 다음과 같다.
 
@@ -249,7 +228,6 @@ runBlocking {
 ```
 
 ![](https://velog.velcdn.com/images/cksgodl/post/b81e13b7-6838-4bc5-936a-9fcf9fdbfb89/image.png)
-
 
 
 ---
@@ -569,9 +547,9 @@ runBlocking은 다음과 같은 기능을 하기 때문이다.
 
 ---
 
-### 부모의 Job에 자식의 Job을 더하기?
+### Launch와 Aysnc에서는 부모의 Job에 자식의 Job을 합친다
 
-`BlockingCoroutine`는 `AbstractCoroutine`를 상속받고 있다.
+AbstractCoroutine`는 다음과 같이 정의된다.
 
 ```
 @InternalCoroutinesApi
@@ -763,27 +741,165 @@ TIMED_WAITING 상태로 진입한다.
 
 5. runblocking의 모든 task가 끝나면 현재 쓰레드를 unpark한다.
 
-# 구조화된 동시성
+# 구조화된 동시성(Structured Concurrency)의 근거
 
-코루틴은 생성될 때 부모의 CorocutineScope.coroutineContext 및 생성되는 코루틴의 Context를 더하여 새로운 `newContext`를 생성한다. 코루틴이 생성될 때는 생성된 newContext, 즉 Job과 부모의 Job에 자식의 Job을 더한다 
+코루틴은 생성될 때 부모의 `CorocutineScope.coroutineContext` 및 생성되는 코루틴의 `context`를 더하여 새로운 `newContext`를 생성한다. 코루틴이 생성될 때는 해당 `newContext`의 코루틴이 생성되는 것이다.
 
-이렇게 생성된 기본 코루틴의 추상클래스 `AbstractCoroutine`가 상속받는 JobSupport에서는 에러핸들링을 다음과 같이 제공하고있다.
+또한 생성된 `newContext`를 기반으로 부모의 `Job`에 자식의 `Job`을 더한다 
+
+---
+
+> 그렇다면 왜 에러가 부모 코루틴으로 전파될까?
+
+`AbstractCoroutine`이 상속받는 `JobSupport` 클래스의 `finalizeFinishingState()`함수를 살펴보자.
+
 ```
-@JsName("handlesExceptionF")
-private fun handlesException(): Boolean {
-	var parentJob = (parentHandle as? ChildHandleNode)?.job ?: return false
-	while (true) {
-		if (parentJob.handlesException) return true
-		parentJob = (parentJob.parentHandle as? ChildHandleNode)?.job ?: return false
-	}
+private fun finalizeFinishingState(state: Finishing, proposedUpdate: Any?): Any? {
+  // ...
+  if (finalException != null) { // 예외로 인한 종료 시 진입
+      val handled = cancelParent(finalException) || handleJobException(finalException)
+      if (handled) (finalState as CompletedExceptionally).makeHandled()
+  }
+  // ...
 }
 ```
-while문을 통해 자신 또는 부모들의 Job이 exception에 대한 handler를 제공하고 있는지를 반환한다.
+`cancelParent`는 현재 코루틴에서 발생한 예외를 부모 코루틴으로 전달함으로써 예외 처리를 요청하는 함수이다. `true`를 반환한다면 예외가 부모에 의해 처리된다는 것이고, `false`를 반환한다면 예외는 부모에 의해 처리될 수 없으니 현재 코루틴이 처리해야 한다는 것이다.
 
-Job트리를 구성함으로써 해당 부모의 job까지 트리 구조를 통해 연결할 수 있기 때문에 오류가 전파되는 것이다.
+`handleJobException`은 전달되는 예외를 가능한 예외 처리 방식으로 처리를 한다. 예외를 처리하는 경우에는 true, 그렇지 않은 경우는 false로 반환된다. 
+
+> `cancleParent`와 `handleJobException`은 `Or`연산자로 `cancelParent`가 true일 경우 `handleJobException`은 실행되지 않는다.
+
+최상위에 위치하는 루트 코루틴을 제외한 나머지 자식 코루틴들은 일반적으로는 `cancelParent()`에서 true를 반환받고 `handleJobException()` 함수를 실행하지 않는다.
+
+오류를 전파 받은 루트 코루틴만이 `cancelParent()` 함수에서 false를 반환받고, `handleJobException()` 을 실행한다.
+
+### CancelParent()
+
+```
+private fun cancelParent(cause: Throwable): Boolean {
+    if (isScopedCoroutine) return true
+
+    val isCancellation = cause is CancellationException
+    val parent = parentHandle
+  
+    if (parent === null || parent === NonDisposableHandle) {
+        return isCancellation
+    }
+
+    return parent.childCancelled(cause) || isCancellation
+}
+```
+
+#### ScopedCoroutine일 경우에는
+
+부모 코루틴에 예외 전파 없이 곧바로 true를 반환하여 현재 코루틴이 예외를 처리하지 않게 한다.
+대표적인 ScopedCoroutine으로는 `coroutinScope`, `supervisorScope`, `runBlocking` 등의 코루틴 빌더들로부터 생성되는 코루틴들을 그 예로 들 수 있다. 이러한 `ScopedCoroutine` 들은 코루틴들의 실행 범위를 제한하기 위한 목적의 코루틴들로 스코프 내에서 실행 된 코루틴들에서 발생한 예외를 스코프 외부로 그대로 전달하는 동작만 수행하기 때문
+
+#### 부모 코루틴이 없는 경우 `(parent === null || parent === NonDisposableHandle)`
+
+`cause is CancellationException`예외가 취소로 인한 예외인지 확인하고 취소이면 `true`를 반환한다. (취소 예외는 코루틴의 전체 스코프를 취소하기 위해 사용되며 정상적인 상황으로 간주되기 때문)
 
 
-참고 자료 :
+#### 코루틴은 Scoped Coroutine도 아니며 Root Coroutine도 아닐 때
+부모 코루틴의 핸들인 parent 객체에 `childCancelled()` 함수를 호출하여 예외를 전파한다. `parent.childCancelled(cause)`
+
+```
+internal class ChildHandleNode(
+    @JvmField val childJob: ChildJob
+) : JobCancellingNode(), ChildHandle {
+    override val parent: Job get() = job
+    override fun invoke(cause: Throwable?) = childJob.parentCancelled(job)
+    override fun childCancelled(cause: Throwable): Boolean = job.childCancelled(cause)
+}
+```
+`childCancelled()`를 보면 트리 구조로 생성된 부모 코루틴의 `job`을 이용하여 예외를 전달하고 있다. 자식은 `Throwable`에 의해 취소되며, 예외가 처리되면 `true`를 반환하며, 그렇지 않으면 `false`를 반환한다.
+
+> SupervisorJob인 경우는 부모 코루틴의 취소 동작 없이 바로 false를 반환한다. 따라서 부모 코루틴으로 예외를 전파하려던 코루틴은 아래에서 살펴볼 handleJobException() 함수를 통해 직접 예외를 처리해야 함
+
+### handleJobException()
+
+`handleJobException`은 예외를 처리하는 경우에는 true, 그렇지 않은 경우는 false로 반환된다.
+
+`cancelParent()`가 false를 반환할 경우 현재 코루틴에서 예외처리를 위해서 호출되는 `handleJobException()` 코드를 살펴보자.
+
+
+```
+// Standalone Coroutine
+override fun handleJobException(exception: Throwable): Boolean {
+    handleCoroutineException(context, exception)
+    return true
+}
+
+// Deferred Coroutine
+protected open fun handleJobException(exception: Throwable): Boolean = false
+
+public fun handleCoroutineException(context: CoroutineContext, exception: Throwable) {
+    try {
+        context[CoroutineExceptionHandler]?.let {
+            it.handleException(context, exception)
+            return
+        }
+    } catch (t: Throwable) {
+        handleCoroutineExceptionImpl(context, handlerException(exception, t))
+        return
+    }
+
+    handleCoroutineExceptionImpl(context, exception)
+}
+```
+
+`launch`와 `async`는 서로 에러를 처리하는 방법이 다르다.
+
+* launch : StandaloneCoroutine
+
+launch로 생성된 코루틴은 `handleJobException`를 오버라이드하여 Job에 대한 예외처리를 `context`와 함께 정의하고 있다. 
+```
+public final override val context: CoroutineContext = parentContext + this
+```
+이는 부모의 `context`를 의미하며 부모 코루틴에 에러를 전파하여 그에 따른 예외처리를 수행한다. 따라서 예외를 처리한 후 true를 반환하는 것을 볼 수 있다.
+
+* async 빌더 : DeferredCoroutine
+
+async로 생성된 코루틴은 따로 예외 핸들링을 구현하지 않기 때문에 기본 구현인 false를 반환하고 다른 방식으로 예외처리를 한다.
+```
+protected open fun handleJobException(exception: Throwable): Boolean = false
+```
+DeferredCoroutine의 경우 코루틴 실행 후 반환받은 핸들인 `Deferred<T>`에 `await()` 함수를 호출하면 코루틴이 예외로 인해 종료되었을 경우 발생했던 예외가 다시 발생하게 된다. 때문에 따로 오버라이드하지 않고 false를 반환하는 것을 볼 수 있다.
+
+---
+
+기본적으로 코루틴은 `Job`트리(코투린트리)를 구성함으로써 해당 부모의 `Job`까지 트리 구조를 통해 연결할 수 있기 때문에 오류가 전파되는 것이다.
+
+예외는 자식부터 부모까지 방향으로 전파되고 `cancelParent()==false`인 부모에서 최종적으로 처리된다.
+
+코루틴이 async같은 빌더를 통해 생성된 `DeferredCoroutine`인 경우는 `await()`를 실행할 때 오류가 전파되며 부모 코루틴의 Job이 `SupervisorJob`인 경우에는 오류가 더이상 위로 전파되지 않는다.
+
+## 정리
+
+
+1. 코루틴은 중첩되면서 코투린트리(Job 트리)를 생성한다.
+
+2. 에러가 발생하면 `cancelParent`를 실행하여 부모의 코루틴을 종료시킨다. 
+부모 코루틴이 스코프 코루틴이 아니거나, 부모 코루틴이 없거나, SupervisorJob이면 `true`를 반환하고, 그렇지 않으면 `false`를 반환한다.
+
+3. `handleJobException`를 실행하여 예외를 처리하며 처리되면 `true`, 그렇지 않은 경우 `false`를 반환한다. 
+
+* Launch와 Async는 에러를 처리하는 방식이 다르다.
+> launch는 `handleCoroutineException`를 오버라이드하여 부모의 context에서 에러를 처리한 후 true를 반환한다.
+async는 false를 기본적으로 반환하며 await()가 수행될 때 해당 에러를 처리한다. 
+
+4. `cancelParent` Or `handleJobException`이 true이면 Job을 종료한다.
+
+
+---
+
+
+
+
+
+참고 자료
+
+https://medium.com/naverfinancial/%EC%BD%94%EB%A3%A8%ED%8B%B4-%EC%98%88%EC%99%B8-%EB%8B%A4%EB%A3%A8%EA%B8%B0-acb5b91dad0a
 
 https://suhwan.dev/2022/01/21/Kotlin-coroutine-structured-concurrency/
 
