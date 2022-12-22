@@ -1,23 +1,22 @@
-
 # Launch에 대해
-
 
 #### Launch에 대해 어떻게 설명하고 있는지 부터 알아보자.
 
-> 현재 쓰레드를 차단하지 않고 새 코루틴을 실행하고 job을 반환한다. 
-job을 이용해 코루틴을 참조할 수 있다.
+> 현재 쓰레드를 차단하지 않고 새 코루틴을 실행하고 job을 반환한다.
+> job을 이용해 코루틴을 참조할 수 있다.
 
-코루틴 스코프는 코루틴 콘텍스트를 상속받고 있으며 추가적인 콘텍스트를 추가할 수 있다. 
-* ContinuationInterceptor
-* dispatcher 
-등등..  기본 값은 Dispatchers.Default이다.
+코루틴 스코프는 코루틴 콘텍스트를 상속받고 있으며 추가적인 콘텍스트를 추가할 수 있다.
+
+- ContinuationInterceptor
+- dispatcher
+  등등.. 기본 값은 Dispatchers.Default이다.
 
 코루틴의 생성은 DEFAULT, LAZY, ATOMIC, UNDISPATCHED의 옵션을 가질 수 있으며 이는 각각
 
-* DEFAULT - 코루틴을 즉시 예약
-* LAZY - 필요할 때 코루틴을 시작
-* ATOMIC - 원자적인(취소 불가능한 방식) 실행을 위한 루틴을 예약
-* UNDISPATCHED - 현재 스레드의 첫 번째 중지 point까지 코루틴을 실행
+- DEFAULT - 코루틴을 즉시 예약
+- LAZY - 필요할 때 코루틴을 시작
+- ATOMIC - 원자적인(취소 불가능한 방식) 실행을 위한 루틴을 예약
+- UNDISPATCHED - 현재 스레드의 첫 번째 중지 point까지 코루틴을 실행
 
 기본값은 DEFAULT이다.
 
@@ -26,21 +25,22 @@ job을 이용해 코루틴을 참조할 수 있다.
 이는 다른 코루틴의 컨텍스트와 함께 코루틴을 사용할 경우 예외가 부모 코루틴의 취소로 이어지는 것을 의미한다.
 
 #### 매개 변수
-* context - Coroutine의 CoroutineScope.coroutineContext 
-* start - 코루틴 시작 옵션. 기본값은 CoroutineStart
-* block - 제공된 스코프의 컨텍스트에서 호출될 코루틴 코드
+
+- context - Coroutine의 CoroutineScope.coroutineContext
+- start - 코루틴 시작 옵션. 기본값은 CoroutineStart
+- block - 제공된 스코프의 컨텍스트에서 호출될 코루틴 코드
 
 지정할 수 있는 컨텍스트는 다음과 같다.
 **어떤 스레드에서 코루틴을 돌릴지를 정의하는 것**
 
-* Dispatcher.Main - 메인 스레드에서 동작(UI쓰레드)
-* Dispatcher.IO - 네트워크 / 디스크(파일) 작업에 사용하는 방식
-* Dispatcher.Default - CPU사용량이 많은 작업에 수행
+- Dispatcher.Main - 메인 스레드에서 동작(UI쓰레드)
+- Dispatcher.IO - 네트워크 / 디스크(파일) 작업에 사용하는 방식
+- Dispatcher.Default - CPU사용량이 많은 작업에 수행
 
 코루틴이 중단되면(에러가 나거나, Thread.interrupt) `job`은 캔슬되고 코루틴은 `InterruptedException`을 발생시킨다.
 
-* Job : 코루틴의 상태를 가지고 있으며 제어한다.
-Job은 하나의 CoroutineContext.Element이고, CoroutineScope.coroutineContext에는 반드시 Job이 포함되어 있어야만 한다.
+- Job : 코루틴의 상태를 가지고 있으며 제어한다.
+  Job은 하나의 CoroutineContext.Element이고, CoroutineScope.coroutineContext에는 반드시 Job이 포함되어 있어야만 한다.
 
 ## 간단하게 메인함수에서 코루틴을 생성해보자.
 
@@ -74,6 +74,7 @@ suspend fun task1(task: String) {
 ```
 
 출력결과
+
 ```
 Start
 task2 Working Thread Started : main
@@ -84,12 +85,14 @@ task3 Working Thread Started : main
 task3 Working Thread Ended : main
 End
 ```
+
 유의할점은 다음과 같다.
-* `task1`는 start = CoroutineStart.DEFAULT로 코루틴을 "예약"
-* `task2`는 context = CoroutineStart.DEFAULT를 통해 task2 Started를 먼저 출력하고 첫 번째 중지 포인트인 delay(1000L)에서 중지
-> [CoroutineStart.DEFAULT는 어떤 쓰레드이든 일단 코루틴을 즉시 실행하고 중지된 후에는 코루틴이 무엇이든 재게된다.](https://stackoverflow.com/questions/54695301/why-coroutines-1st-run-on-caller-thread-but-after-first-suspension-point-it-runs)
-Task2의 Ended는  kotlinx.coroutines.DefaultExecutor가 찍힘을 볼 수 있다.
-* `task3`은 start = CoroutineStart.LAZY임으로 delay(4000L)이후 실행되는 것을 볼 수 있다. 
+
+- `task1`는 start = CoroutineStart.DEFAULT로 코루틴을 "예약"
+- `task2`는 context = CoroutineStart.DEFAULT를 통해 task2 Started를 먼저 출력하고 첫 번째 중지 포인트인 delay(1000L)에서 중지
+  > [CoroutineStart.DEFAULT는 어떤 쓰레드이든 일단 코루틴을 즉시 실행하고 중지된 후에는 코루틴이 무엇이든 재게된다.](https://stackoverflow.com/questions/54695301/why-coroutines-1st-run-on-caller-thread-but-after-first-suspension-point-it-runs)
+  > Task2의 Ended는 kotlinx.coroutines.DefaultExecutor가 찍힘을 볼 수 있다.
+- `task3`은 start = CoroutineStart.LAZY임으로 delay(4000L)이후 실행되는 것을 볼 수 있다.
 
 ## 내부 소스를 톺아보자
 
@@ -111,6 +114,7 @@ public fun CoroutineScope.launch(
 위에서 설명한것과 같이 `context`, `start`를 매개변수로 코루틴을 생성하고 이는 Job을 반환한다.
 
 1. `val newContext = newCoroutineContext(context)`
+
 ```
 @ExperimentalCoroutinesApi
 public actual fun CoroutineScope.newCoroutineContext(context: CoroutineContext): CoroutineContext {
@@ -120,7 +124,9 @@ public actual fun CoroutineScope.newCoroutineContext(context: CoroutineContext):
         debug + Dispatchers.Default else debug
 }
 ```
+
 코루틴스코프의 코루틴콘텍스트와 매개변수로 입력된 새로운 context를 복사하여 새로운 콘텍스트를 만들어 낸다.
+
 ```
 runBlocking{
 	launch {
@@ -128,11 +134,12 @@ runBlocking{
 	}
 }
 ```
+
 위의 launch는 RunBlocking의 코루틴 스코프의 GlobalScope.coroutineContext와 Default context인 EmptyContext를 활용하여 새로운 콘텍스트를 만들어 낼 것 이다.
 
 2. `val coroutine = if (start.isLazy)
-        LazyStandaloneCoroutine(newContext, block) else
-        StandaloneCoroutine(newContext, active = true)`
+LazyStandaloneCoroutine(newContext, block) else
+StandaloneCoroutine(newContext, active = true)`
 
 레이지 코틀린생성자는 다음과 같다.
 
@@ -148,12 +155,13 @@ private class LazyStandaloneCoroutine(
     }
 }
 ```
+
 이는 코루틴 인터셉터인 `continuation`를 선언하고 코루틴의 시작이 감지되면 코루틴을 시작한다.
 
 ---
 
-
 레이지가 아닌 형태의 기본 코루틴은 다음과 같이 만들어진다.
+
 ```
 private open class StandaloneCoroutine(
     parentContext: CoroutineContext,
@@ -173,46 +181,46 @@ public abstract class AbstractCoroutine<in T>(
     initParentJob: Boolean,
     active: Boolean
 ) : JobSupport(active), Job, Continuation<T>, CoroutineScope {
-    
+
     init {
         if (initParentJob) initParentJob(parentContext[Job])
     }
-    
+
     public final override val context: CoroutineContext = parentContext + this
-    
+
     public override val coroutineContext: CoroutineContext get() = context
 
 	// ...
 }
 ```
 
-위에서 생성한 `newContext`를 `parentContext`라는 인자로 전달하여 `AbsractCoroutine`을 반환한다. 
+위에서 생성한 `newContext`를 `parentContext`라는 인자로 전달하여 `AbsractCoroutine`을 반환한다.
 
-또한 handleJobException 오버라이드 받아 `exception`이 일어났을 때 `context`와 `exception`을 가지고 에러를 처리하는데 
+또한 handleJobException 오버라이드 받아 `exception`이 일어났을 때 `context`와 `exception`을 가지고 에러를 처리하는데
 `context`는 다음과 같이 정의되어 있다.
 
 ```
 public final override val context: CoroutineContext = parentContext + this
 ```
 
-즉 부모의 context와 자신을 더한것을 context로 정의하고 있다. 여기서 자신은 `Job`으로의 this이다. 
+즉 부모의 context와 자신을 더한것을 context로 정의하고 있다. 여기서 자신은 `Job`으로의 this이다.
 
->context에 `Job`을 어떻게 더할 수 있나?
-`Job : CoroutineContext.Element` Job은 코루틴 콘텍스트의 요소로 정의되어 있으며 
-`public operator fun plus(context: CoroutineContext): CoroutineContext`
-Job내에서 해당 연산자를 구현해 주고 있다.
+> context에 `Job`을 어떻게 더할 수 있나?
+> `Job : CoroutineContext.Element` Job은 코루틴 콘텍스트의 요소로 정의되어 있으며
+> `public operator fun plus(context: CoroutineContext): CoroutineContext`
+> Job내에서 해당 연산자를 구현해 주고 있다.
 
 `CoroutineScope.coroutineContext`에는 coroutine의 실행을 위한 여러가지 정보가 담기지만, 가장 중요한 것은 coroutine의 `Job`을 저장하는 것이다. `Job`은 하나의 `CoroutineContext.Element`이고, `CoroutineScope.coroutineContext`에는 반드시 Job이 포함되어 있어야만 한다
 
-> 생성된 새로운 newContext 즉 parentContext에 대한 잡을 생성하기위해 `AbstractCoroutine`의 생성자에서는 부모의 Job에 자식의 Job을 더해주고있다. 
-`initParentJob(parentContext[Job])` 
+> 생성된 새로운 newContext 즉 parentContext에 대한 잡을 생성하기위해 `AbstractCoroutine`의 생성자에서는 부모의 Job에 자식의 Job을 더해주고있다.
+> `initParentJob(parentContext[Job])`
 
 Job은 부모-자식의 트리형태의 예는 다음과 같다.
 
 ```
-runBlocking { 
+runBlocking {
 	// coroutine 1
-    launch { 
+    launch {
     	// coroutine 2
         launch {
         	// coroutine 3
@@ -220,15 +228,14 @@ runBlocking {
         launch {
         	// coroutine 4
         }
-    }   
-    asyce { 
-		// coroutine 5    
+    }
+    asyce {
+		// coroutine 5
     }
 }
 ```
 
 ![](https://velog.velcdn.com/images/cksgodl/post/b81e13b7-6838-4bc5-936a-9fcf9fdbfb89/image.png)
-
 
 ---
 
@@ -236,14 +243,14 @@ runBlocking {
 
 ```
 /* AbstractCoroutine.start()의 구현 */
-public fun <R> start(start: CoroutineStart, receiver: R, block: suspend R.() -> T) { 
+public fun <R> start(start: CoroutineStart, receiver: R, block: suspend R.() -> T) {
     start(block, receiver, this)
 }
 ```
 
-* `start` launch {} 를 실행할 때 아규먼트로 넣은 start를 의미
-* `receiver` newContext를 사용해 만든 coroutine을 의미한다.
-* `block` launch {} 안의 내용
+- `start` launch {} 를 실행할 때 아규먼트로 넣은 start를 의미
+- `receiver` newContext를 사용해 만든 coroutine을 의미한다.
+- `block` launch {} 안의 내용
 
 을 이용해 새로운 코루틴을 시작한다.
 
@@ -252,10 +259,10 @@ public fun <R> start(start: CoroutineStart, receiver: R, block: suspend R.() -> 
 코루틴을 반환하되 `Job`의 형태로 반환한다.
 Job을 사용해 코루틴을 제어할 수 있기 때문이다.
 
-
 ---
 
 # Async에 대해
+
 #### 제공하는 설명
 
 코루틴을 만들고 이후 결과를 `Deffered`로 반환한다.
@@ -280,7 +287,9 @@ fun main() {
     }
 }
 ```
+
 실행결과
+
 ```
 Start
 task1 Working Thread Started : main
@@ -299,12 +308,13 @@ launch {
 	task1("task2") // 실행되지 않는다.
 }
 ```
+
 실행 결과
+
 ```
 Start
 Exception in thread "main" java.lang.Exception: task1실패
 ```
-
 
 이러한 작업을 방지하기 위해 이러한 (Supervisor Job 또는 Supervisor Scope)를 사용할 수 있다.
 
@@ -327,7 +337,9 @@ runBlocking(context = EmptyCoroutineContext){
     println("End")
 }
 ```
-실행결과 
+
+실행결과
+
 ```
 Start
 Exception in thread "DefaultDispatcher-worker-1" java.lang.AssertionError: task1실패
@@ -374,6 +386,7 @@ private open class DeferredCoroutine<T>(
         registerSelectClause1Internal(select, block)
 }
 ```
+
 `DeferredCoroutine()`생성자는 AbstractCoroutine을 상속받되, `Deffered`도 상속받는다.
 이는 차단 불가능한 결과가 있는 `Job`이다.
 
@@ -382,7 +395,7 @@ private open class DeferredCoroutine<T>(
 > All functions on this interface and on all interfaces derived from it are thread-safe and can be safely invoked from concurrent coroutines without external synchronization.
 
 Deffered를 상속받는 인터페이스의 모든 기능은 쓰레드로부터 안전하며 외부 동기화 없이 동시 코루틴에서 안전하게 호출될 수 있다고 한다.
-하지만 파생된 모든 인터페이스에 어떤 메소드가 추가될지 모르기 때문에 모든 서드파티 라이브러리에서 모두 안전하지는 않는다. 
+하지만 파생된 모든 인터페이스에 어떤 메소드가 추가될지 모르기 때문에 모든 서드파티 라이브러리에서 모두 안전하지는 않는다.
 
 async {}에서는 `Job`을 state라는 프로퍼티로 관리하며 이는 완료되면 `Incomplete`상태가 되며 `unboxState`를 활용해 유저 코드에 대한 값을 얻을 수 있다.
 
@@ -395,7 +408,7 @@ async {}에서는 `Job`을 state라는 프로퍼티로 관리하며 이는 완�
     }
 ```
 
-* state 내부 소스
+- state 내부 소스
 
 ```
     internal val state: Any? get() {
@@ -410,7 +423,6 @@ async {}에서는 `Job`을 state라는 프로퍼티로 관리하며 이는 완�
 
 이후 `AbstractCorotine()`을 만드는 과정은 동일하다.
 
-
 # RunBlocking에 대해
 
 #### 제공하는 설명
@@ -419,16 +431,14 @@ async {}에서는 `Job`을 state라는 프로퍼티로 관리하며 이는 완�
 
 **이 기능은 코루틴에서 사용해서는 안된다고 권장하고 있으며** suspend함수의 도메인 로직 테스트용으로만 쓰이도록 설계되었다.
 
-사용되는 `CoroutineDispatcher`에서 해당 코루틴이 완료될 때 까지 block()내의 코드를 실행한다. 
-
-
+사용되는 `CoroutineDispatcher`에서 해당 코루틴이 완료될 때 까지 block()내의 코드를 실행한다.
 
 ## 실제 runBlocking 함수를 뜯어보자.
 
 ```
 @Throws(InterruptedException::class)
 public actual fun <T> runBlocking(context: CoroutineContext, block: suspend CoroutineScope.() -> T): T {
-    contract { 
+    contract {
         callsInPlace(block, InvocationKind.EXACTLY_ONCE)
     }
     val currentThread = Thread.currentThread()
@@ -457,18 +467,19 @@ public actual fun <T> runBlocking(context: CoroutineContext, block: suspend Coro
 ---
 
 ### contract를 통한 컴파일러에게 실행횟수 전달
+
 > Specifies that the function parameter lambda is invoked in place.
 
 ```
-contract { 
+contract {
 	callsInPlace(block, InvocationKind.EXACTLY_ONCE)
 }
 ```
 
-callsInPlace는 람다 함수를 사용할 때, 그 함수의 호출 횟수를 명시적으로 컴파일러에게 이해시켜주기 위해 사용 
+callsInPlace는 람다 함수를 사용할 때, 그 함수의 호출 횟수를 명시적으로 컴파일러에게 이해시켜주기 위해 사용
 해당 block을 1번만 실행시킨다는 것을 컴파일러에게 전달
 
-> 왜 전달해야 하는가? 
+> 왜 전달해야 하는가?
 
 ```
 fun main(){
@@ -482,8 +493,8 @@ fun invokeLambda(lambda: ()-> Unit){
     lambda()
 }
 ```
-블록으로 전달된 람다식을 1번만 실행할거라는 보장이 없기 때문에 setter을 한번밖에 할 수 없는 str은 오류를 발생하게 된다.
 
+블록으로 전달된 람다식을 1번만 실행할거라는 보장이 없기 때문에 setter을 한번밖에 할 수 없는 str은 오류를 발생하게 된다.
 
 ```
 fun invokeLambda(lambda: ()-> Unit){
@@ -508,7 +519,7 @@ fun invokeLambda(lambda: ()-> Unit){
     return coroutine.joinBlocking()
 ```
 
-현재 쓰레드 상태를 가져온 후 해당 상태와 함께 `coroutine`을 생성하고 시작한다. 
+현재 쓰레드 상태를 가져온 후 해당 상태와 함께 `coroutine`을 생성하고 시작한다.
 
 해당 코루틴은 `BlockingCoroutine`이며 생성자는 다음과 같다.
 
@@ -518,9 +529,9 @@ private class BlockingCoroutine<T>(
     private val blockedThread: Thread,
     private val eventLoop: EventLoop?
 ) : AbstractCoroutine<T>(parentContext, true, true) {
- 
+
  	// ...
-    
+
  	override fun afterCompletion(state: Any?) {
         // wake up blocked thread
         if (Thread.currentThread() != blockedThread)
@@ -530,20 +541,19 @@ private class BlockingCoroutine<T>(
 }
 ```
 
-코루틴의 joinBlocking() 함수가 Java의 LockSupport를 사용하여 현재 스레드를 파킹(차단)한다. 
+코루틴의 joinBlocking() 함수가 Java의 LockSupport를 사용하여 현재 스레드를 파킹(차단)한다.
 이후
 afterCompletion()함수 내에서 파킹한 쓰레드에 대한 unpark를 진행하고 있다.
 
-* park : 쓰레드를 잠구는 것 (남이 사용하지 못하게 재우는 것을 의미)
-* unpark : 쓰레드를 깨우는 것 쓰레드를 사용할 수 있게 풀어줌
-
+- park : 쓰레드를 잠구는 것 (남이 사용하지 못하게 재우는 것을 의미)
+- unpark : 쓰레드를 깨우는 것 쓰레드를 사용할 수 있게 풀어줌
 
 ![](https://velog.velcdn.com/images/cksgodl/post/ee18fad0-077a-405d-9b72-f2428fff9d75/image.png)
 
 이와 같이 runblocking을 실행할 때 **현재 스레드를 중단 없이 차단한 것을 볼 수 있다.**
 runBlocking은 다음과 같은 기능을 하기 때문이다.
-> 새 코루틴을 실행하고 완료될 때까지 현재 스레드를 중단 없이 차단한다.
 
+> 새 코루틴을 실행하고 완료될 때까지 현재 스레드를 중단 없이 차단한다.
 
 ---
 
@@ -566,9 +576,8 @@ public abstract class AbstractCoroutine<in T>(
 }
 ```
 
-
-
 1. coroutine이 생성될 때, `parentContext`를 인자로 받아온다.
+
 ```
 // dipatcher 파라미터를 정의하지 않았을 때
 eventLoop = ThreadLocalEventLoop.eventLoop
@@ -579,27 +588,29 @@ newContext = GlobalScope.newCoroutineContext(context)
 ```
 
 2. parentContext에서 부모의 Job을 빼온다
+
 ```
 initParentJob(parentContext[Job])
 ```
 
 3. 자신의 job(자기 자신)을 부모의 child로 붙인다
+
 ```
 val handle = parent.attachChild(this).
 ```
 
->코루틴내에서 또 코루틴이 생성되면 이 job은 트리의 형태가 이루어지게 된다.
+> 코루틴내에서 또 코루틴이 생성되면 이 job은 트리의 형태가 이루어지게 된다.
 
 여기서 AbastractCoroutine 즉 `Coroutine`은 자기 자신이 CoroutineScope이며 `Job`이다.
 
-* CoroutineScope - coroutine은 자기 자신이 scope가 되어 자신의 code block 안에서 자식 coroutine을 실행할 수 있다.
-또한, 자신의 coroutine context를 자식 coroutine에게 전달할 수 있다(e.g. 위에서 본 parentContext 주입 등).
+- CoroutineScope - coroutine은 자기 자신이 scope가 되어 자신의 code block 안에서 자식 coroutine을 실행할 수 있다.
+  또한, 자신의 coroutine context를 자식 coroutine에게 전달할 수 있다(e.g. 위에서 본 parentContext 주입 등).
 
 ### runBlocking에서도 그렇게 돌아갈까?
 
 ```
  public actual fun <T> runBlocking(context: CoroutineContext, block: suspend CoroutineScope.() -> T): T {
-	
+
     val eventLoop: EventLoop?
     val newContext: CoroutineContext
     if (contextInterceptor == null) {
@@ -614,9 +625,11 @@ val handle = parent.attachChild(this).
     return coroutine.joinBlocking()
 }
 ```
+
 runBlocking의 디스패쳐로 받아온 context를 활용해 `GlobalScope.newCoroutineContext`을 실행시켜 새로운 context를 사용하는 코루틴을 시작하고있다.
 
 newCoroutineContext는 다음과 같이 실행된다.
+
 ```
 @ExperimentalCoroutinesApi
 public actual fun CoroutineScope.newCoroutineContext(context: CoroutineContext): CoroutineContext {
@@ -629,8 +642,8 @@ public actual fun CoroutineScope.newCoroutineContext(context: CoroutineContext):
 
 `val combined`는 현재 CoroutineScope의 Context와 context param을 더해 반환하고 있다.
 
-* coroutineContext는 GlobalScope의 context
-* context에는 eventLoop라는 element밖에 없음을 볼 수 있다.
+- coroutineContext는 GlobalScope의 context
+- context에는 eventLoop라는 element밖에 없음을 볼 수 있다.
 
 ```
 // dipatcher 파라미터를 정의하지 않았을 때
@@ -672,12 +685,11 @@ fun joinBlocking(): T {
 }
 ```
 
-while문 안 쪽을 잘 보면 isCompleted가 true일 때, 즉 event loop의 queue가 비었을 때 종료됨을 알 수 있다. 
+while문 안 쪽을 잘 보면 isCompleted가 true일 때, 즉 event loop의 queue가 비었을 때 종료됨을 알 수 있다.
 즉, runBlocking 으로 실행된 coroutine은 부모 coroutine 없이(따라서 부모 Job 없이) 실행된다.
 
->추가 : isCompleted는 Atomic Type은으로 한 번에 단 하나의 스레드만 변수의 값을 변경할 수 있도록 제공하고 있다 
-**lock 없이 동기화 처리 수행**
-
+> 추가 : isCompleted는 Atomic Type은으로 한 번에 단 하나의 스레드만 변수의 값을 변경할 수 있도록 제공하고 있다
+> **lock 없이 동기화 처리 수행**
 
 ```
 private val _isCompleted = atomic(false)
@@ -690,20 +702,21 @@ private var isCompleted
 
 ### parkNanos란?
 
-LockSupport()에서 쓰레드를 제어하기위해 제공하는 함수로 
->대기 시간까지 스레드 스케줄링을 위해 현재 스레드를 비활성화한다.
+LockSupport()에서 쓰레드를 제어하기위해 제공하는 함수로
 
+> 대기 시간까지 스레드 스케줄링을 위해 현재 스레드를 비활성화한다.
 
 while문 안에서 `parkNanos`의 setter는 다음과 같다.
-* 다음 이벤트가 있으면 해당 이벤트를 실행하고 `0`을 반환 
-* 이벤트가 없으면  `Long.MAX_VALUE`를 반환
+
+- 다음 이벤트가 있으면 해당 이벤트를 실행하고 `0`을 반환
+- 이벤트가 없으면 `Long.MAX_VALUE`를 반환
 
 ```
     public open fun processNextEvent(): Long {
         if (!processUnconfinedEvent()) return Long.MAX_VALUE
         return 0
     }
-    
+
     public fun processUnconfinedEvent(): Boolean {
         val queue = unconfinedQueue ?: return false
         val task = queue.removeFirstOrNull() ?: return false
@@ -713,6 +726,7 @@ while문 안에서 `parkNanos`의 setter는 다음과 같다.
 ```
 
 이벤트가 있으면 parkNanos() 를 실행한다.
+
 ```
 public static void parkNanos(Object blocker, long nanos) {
 	if (nanos > 0) {
@@ -723,18 +737,18 @@ public static void parkNanos(Object blocker, long nanos) {
 	}
 }
 ```
-다음 실행할 이벤트가 없어서 `nanos`가 `Long.MAX_VALUE`이면 해당쓰레드를 park하고 
+
+다음 실행할 이벤트가 없어서 `nanos`가 `Long.MAX_VALUE`이면 해당쓰레드를 park하고
 TIMED_WAITING 상태로 진입한다.
-다음 이벤트가 들어와 unpark가 되기 전까지 대기한다. 
+다음 이벤트가 들어와 unpark가 되기 전까지 대기한다.
 
 ## RunBlocking 정리
 
->  runBlocking : 새 코루틴을 실행하고 완료될 때까지 현재 스레드를 중단 없이 차단한다.
+> runBlocking : 새 코루틴을 실행하고 완료될 때까지 현재 스레드를 중단 없이 차단한다.
 
 1. runbocking이 `joinBlocking()`되면서 현재 쓰레드를 중단 없이 차단한다.
 
 2. eventLoop라는 아규먼트를 사용해 newContext를 생성한다.
-	  
 3. runBlocking의 경우는 eventLoop를 활용하여 task들을 큐로 관리한다.
 
 4. 각각의 task들을 실행하며 실행할 때 마다 parkNanos를 활용하여 해당 쓰레드를 unpark, park를 수행한다.
@@ -745,7 +759,7 @@ TIMED_WAITING 상태로 진입한다.
 
 코루틴은 생성될 때 부모의 `CorocutineScope.coroutineContext` 및 생성되는 코루틴의 `context`를 더하여 새로운 `newContext`를 생성한다. 코루틴이 생성될 때는 해당 `newContext`의 코루틴이 생성되는 것이다.
 
-또한 생성된 `newContext`를 기반으로 부모의 `Job`에 자식의 `Job`을 더한다 
+또한 생성된 `newContext`를 기반으로 부모의 `Job`에 자식의 `Job`을 더한다
 
 ---
 
@@ -763,9 +777,10 @@ private fun finalizeFinishingState(state: Finishing, proposedUpdate: Any?): Any?
   // ...
 }
 ```
+
 `cancelParent`는 현재 코루틴에서 발생한 예외를 부모 코루틴으로 전달함으로써 예외 처리를 요청하는 함수이다. `true`를 반환한다면 예외가 부모에 의해 처리된다는 것이고, `false`를 반환한다면 예외는 부모에 의해 처리될 수 없으니 현재 코루틴이 처리해야 한다는 것이다.
 
-`handleJobException`은 전달되는 예외를 가능한 예외 처리 방식으로 처리를 한다. 예외를 처리하는 경우에는 true, 그렇지 않은 경우는 false로 반환된다. 
+`handleJobException`은 전달되는 예외를 가능한 예외 처리 방식으로 처리를 한다. 예외를 처리하는 경우에는 true, 그렇지 않은 경우는 false로 반환된다.
 
 > `cancleParent`와 `handleJobException`은 `Or`연산자로 `cancelParent`가 true일 경우 `handleJobException`은 실행되지 않는다.
 
@@ -781,7 +796,7 @@ private fun cancelParent(cause: Throwable): Boolean {
 
     val isCancellation = cause is CancellationException
     val parent = parentHandle
-  
+
     if (parent === null || parent === NonDisposableHandle) {
         return isCancellation
     }
@@ -799,8 +814,8 @@ private fun cancelParent(cause: Throwable): Boolean {
 
 `cause is CancellationException`예외가 취소로 인한 예외인지 확인하고 취소이면 `true`를 반환한다. (취소 예외는 코루틴의 전체 스코프를 취소하기 위해 사용되며 정상적인 상황으로 간주되기 때문)
 
-
 #### 코루틴은 Scoped Coroutine도 아니며 Root Coroutine도 아닐 때
+
 부모 코루틴의 핸들인 parent 객체에 `childCancelled()` 함수를 호출하여 예외를 전파한다. `parent.childCancelled(cause)`
 
 ```
@@ -812,6 +827,7 @@ internal class ChildHandleNode(
     override fun childCancelled(cause: Throwable): Boolean = job.childCancelled(cause)
 }
 ```
+
 `childCancelled()`를 보면 트리 구조로 생성된 부모 코루틴의 `job`을 이용하여 예외를 전달하고 있다. 자식은 `Throwable`에 의해 취소되며, 예외가 처리되면 `true`를 반환하며, 그렇지 않으면 `false`를 반환한다.
 
 > SupervisorJob인 경우는 부모 코루틴의 취소 동작 없이 바로 false를 반환한다. 따라서 부모 코루틴으로 예외를 전파하려던 코루틴은 아래에서 살펴볼 handleJobException() 함수를 통해 직접 예외를 처리해야 함
@@ -821,7 +837,6 @@ internal class ChildHandleNode(
 `handleJobException`은 예외를 처리하는 경우에는 true, 그렇지 않은 경우는 false로 반환된다.
 
 `cancelParent()`가 false를 반환할 경우 현재 코루틴에서 예외처리를 위해서 호출되는 `handleJobException()` 코드를 살펴보자.
-
 
 ```
 // Standalone Coroutine
@@ -850,20 +865,24 @@ public fun handleCoroutineException(context: CoroutineContext, exception: Throwa
 
 `launch`와 `async`는 서로 에러를 처리하는 방법이 다르다.
 
-* launch : StandaloneCoroutine
+- launch : StandaloneCoroutine
 
-launch로 생성된 코루틴은 `handleJobException`를 오버라이드하여 Job에 대한 예외처리를 `context`와 함께 정의하고 있다. 
+launch로 생성된 코루틴은 `handleJobException`를 오버라이드하여 Job에 대한 예외처리를 `context`와 함께 정의하고 있다.
+
 ```
 public final override val context: CoroutineContext = parentContext + this
 ```
+
 이는 부모의 `context`를 의미하며 부모 코루틴에 에러를 전파하여 그에 따른 예외처리를 수행한다. 따라서 예외를 처리한 후 true를 반환하는 것을 볼 수 있다.
 
-* async 빌더 : DeferredCoroutine
+- async 빌더 : DeferredCoroutine
 
 async로 생성된 코루틴은 따로 예외 핸들링을 구현하지 않기 때문에 기본 구현인 false를 반환하고 다른 방식으로 예외처리를 한다.
+
 ```
 protected open fun handleJobException(exception: Throwable): Boolean = false
 ```
+
 DeferredCoroutine의 경우 코루틴 실행 후 반환받은 핸들인 `Deferred<T>`에 `await()` 함수를 호출하면 코루틴이 예외로 인해 종료되었을 경우 발생했던 예외가 다시 발생하게 된다. 때문에 따로 오버라이드하지 않고 false를 반환하는 것을 볼 수 있다.
 
 ---
@@ -876,26 +895,20 @@ DeferredCoroutine의 경우 코루틴 실행 후 반환받은 핸들인 `Deferre
 
 ## 정리
 
-
 1. 코루틴은 중첩되면서 코투린트리(Job 트리)를 생성한다.
 
-2. 에러가 발생하면 `cancelParent`를 실행하여 부모의 코루틴을 종료시킨다. 
-부모 코루틴이 스코프 코루틴이 아니거나, 부모 코루틴이 없거나, SupervisorJob이면 `true`를 반환하고, 그렇지 않으면 `false`를 반환한다.
+2. 에러가 발생하면 `cancelParent`를 실행하여 부모의 코루틴을 종료시킨다.
+   부모 코루틴이 스코프 코루틴이 아니거나, 부모 코루틴이 없거나, SupervisorJob이면 `true`를 반환하고, 그렇지 않으면 `false`를 반환한다.
 
-3. `handleJobException`를 실행하여 예외를 처리하며 처리되면 `true`, 그렇지 않은 경우 `false`를 반환한다. 
+3. `handleJobException`를 실행하여 예외를 처리하며 처리되면 `true`, 그렇지 않은 경우 `false`를 반환한다.
 
-* Launch와 Async는 에러를 처리하는 방식이 다르다.
-> launch는 `handleCoroutineException`를 오버라이드하여 부모의 context에서 에러를 처리한 후 true를 반환한다.
-async는 false를 기본적으로 반환하며 await()가 수행될 때 해당 에러를 처리한다. 
+- Launch와 Async는 에러를 처리하는 방식이 다르다.
+  > launch는 `handleCoroutineException`를 오버라이드하여 부모의 context에서 에러를 처리한 후 true를 반환한다.
+  > async는 false를 기본적으로 반환하며 await()가 수행될 때 해당 에러를 처리한다.
 
 4. `cancelParent` Or `handleJobException`이 true이면 Job을 종료한다.
 
-
 ---
-
-
-
-
 
 참고 자료
 
