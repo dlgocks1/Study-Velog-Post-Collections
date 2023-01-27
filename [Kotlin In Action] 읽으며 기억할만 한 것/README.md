@@ -1890,4 +1890,289 @@ fun <T> copyData(source: MutableList<out T>, destination: MutableList<T>) {
 
 - 제네릭 클래스의 타입 인자가 어떤 타입인지 정보가 없거나 타입 인자가 어떤 타입인지가 중요하지 않을 때 스타 프로젝션 구문을 사용할 수 있다.
 
-# 어노테이션과 리플렉션
+# DSL 만들기
+
+### [[Kotlin] DSL를 활용하여 나만의 Custom Test 메소드 만들어보자](https://velog.io/@cksgodl/Kotlin-DSL%EB%A5%BC-%ED%99%9C%EC%9A%A9%ED%95%98%EC%97%AC-%EB%82%98%EB%A7%8C%EC%9D%98-Custom-Test-%EB%A9%94%EC%86%8C%EB%93%9C-%EB%A7%8C%EB%93%A4%EC%96%B4%EB%B3%B4%EA%B8%B0)
+
+### [[Kotlin] 복잡한 객체를 생성하기 위한 DSL을 정의하라](https://velog.io/@cksgodl/Kotlin-%EB%B3%B5%EC%9E%A1%ED%95%9C-%EA%B0%9D%EC%B2%B4%EB%A5%BC-%EC%83%9D%EC%84%B1%ED%95%98%EA%B8%B0-%EC%9C%84%ED%95%9C-DSL%EC%9D%84-%EC%A0%95%EC%9D%98%ED%95%98%EB%9D%BC)
+
+### [[Android/Kotlin] 버튼을 생성하는 DSL을 만들어 Compose같이 버튼을 만들어보자](https://velog.io/@cksgodl/AndroidKotlin-%EB%B2%84%ED%8A%BC%EC%9D%84-%EC%83%9D%EC%84%B1%ED%95%98%EB%8A%94-DSL%EC%9D%84-%EB%A7%8C%EB%93%A4%EC%96%B4-Compose%EA%B0%99%EC%9D%B4-%EB%B2%84%ED%8A%BC%EC%9D%84-%EB%A7%8C%EB%93%A4%EC%96%B4%EB%B3%B4%EC%9E%90)
+
+다음 링크 참조
+
+# 코틀린 1.1, 1.2, 1.3에서 업데이트 된 점
+
+## 코틀린 1.1
+
+### 타입 별명 `typealias`
+
+주로 사용하는 타입에 다른 이름을 붙이거나, 짧은 이름을 붙일 수 있다.
+
+```
+// 콜백 함수 별명
+typealias MyHandler = (Int, String, Any) -> Unit
+
+fun addHandler(h:MyHnadler) { ... }
+
+// 컬렉션에 대한 별명
+typealias Args = Array<String>
+
+// 제네릭 타입 별명
+typealis StringKeyMap<V> = Map<String, V>
+val myMap: StringKeyMap<Int> = mapOf("One" to 1)
+
+// 중첩클래스에 대한 별명
+class Foo {
+	class Bar {
+    	inner class Baz
+    }
+}
+typealis FooBarBaz = Foo.Bar.Baz
+```
+
+최상위 수준에서만 타입 별명을 정의할 수있다.
+
+### 람다 파라미터의 구조 분해
+
+```
+val nums = listOf(1, 2, 3)
+val names = listOf("One", "Two", "Three")
+(nums zip names).forEach { (num, name) -> println("$num = $name")}
+```
+
+### 프로퍼티 접근자에 대한 인라이닝
+
+프로퍼티 접근자도 함수이므로 코틀린 `1.1`부터는 접근자를 `inline`으로 설정할 수 있다. 게터 뿐만 아니라 세터도 인라이닝이 가능하며, 확장 멤버 프로퍼티나 최상위 프로퍼티도 인라이닝이 가능하다.
+
+프로퍼티에 뒷받침하는 필드가 있으면 프로퍼티의 게터나 세터를 인라이닝할 수 없다.
+
+```
+val topLevel: Double
+	inline get() = Math.PI
+
+class InlinePropExample(var value: Int) {
+	var setOnly: Int
+    	get() = value
+        inline set(v) { value = v }
+    // inline property cannot have backing field
+    val backing: Int = 10
+    	inline get() = field * 1000
+}
+```
+
+### `reified`활용해 제네릭 타입으로 이넘 값 접근
+
+```
+enum calss DAYSOFWEEK { MON, TUE, WED, THR, FRI, SAT, SUN }
+
+inline fun <reified T: Enum<T>> mkString(): String =
+	buildstring {
+    	for (v in enumValues<T>()) {
+        	append(v)
+            append(",")
+        }
+    }
+
+mkString<DAYSOFWEEK>() // MON, TUE, WED, ...
+
+```
+
+`enumValues<T>()`를 활용해 제네릭 이넘 값에 접근할 수 있다. 역으로 이름에서 값을 가져오고 싶으면 `enumValuesOf`를 사용한다.
+
+### mod와 rem
+
+mod 대신 rem이 `%`연산자로 해석된다.
+
+```
+data class V(val value:Int) {
+	infix operator fun rem(other:V) = V(10)
+    infix operator fun mod(other:V) = V(-10)
+}
+
+val x = V(5)
+val y = V(7)
+val r1 = x % y // V(10)
+val r2 = x mod y // V(-10)
+val r3 = x rem y // V(10)
+```
+
+그 이유는 `BigInteger`구현과 다른 정수형 타입의 `%`연산 결과를 맞추기 위함이다.
+
+### 표준 라이브러리의 변화
+
+### onEach()
+
+컬렉션과 시퀀스에 `onEach` 확장 함수가 생겼다. `onEach`는 `forEach`와 비슷하지만 다시 컬렉션이나 시퀀스를 다시 반환하기에 메소드 연쇄 호출이 가능하다.
+
+```
+listOf(1,2,3,4,5).onEach { println("$it") }.map { it*it }.joinToString(",")
+```
+
+### takeIf
+
+`takeIf`는 수신 객체가 술어를 만족하는지 검사해서 만족할 때 수신 객체를 반환하고, 불만족할 때 `null`을 반환한다. `takeUnless`는 이의 반대이다.
+
+```
+val srcOrKoltin: Any = File("src").takeIf { it.exists() } ?: File("Kotlin")
+```
+
+### Map.toMap()과 Map.toMutableMap()
+
+맵을 복사할 때 사용한다.
+
+```
+val m1 = mapOf(1 to 2)
+val m2 = m1.toMutableMap()
+m2[10] = 100
+println(m2) // { 1=2, 10=100 }
+```
+
+## 코틀린 1.2
+
+### 어노테이션의 배열 리터널
+
+어노테이션 `[]`사이에 원소를 넣어서 표시할 수 있다.
+
+```
+@RequestMapping(value = ["v1", "v2"], path = ["path", "to", "resource"])
+```
+
+### 지연 초기화 검사
+
+```
+lateinit var url: String
+
+if(::url.isInitialized) { ... }
+```
+
+### 경고를 오류로 처리하기
+
+커맨드라인 옵션에 `-Werror`를 지정하면 모든 경고를 오류로 처리한다. 그레이들에서는 다음과 같이 사용
+
+```
+complieKotlin {
+	kotlinOptions.warningsAsErrors = true
+}
+```
+
+### 스마트 캐스트 개선
+
+```
+val b = (x as? SubClass)?.subclassMethod1()
+
+if(b!=null) {
+	x.subclassMethod2() // x는 Subclass
+}
+```
+
+람다 단에서`var`에 대한 스마트 캐스트가 가능하다. 단, 스마트 캐스트가 이뤄진 이후에는 `var`을 변경하면 안 된다.
+
+### 가변 인자에게 이름 붙은 인자로 원소 하나만 넘기기
+
+예전에는 `foo(items = i)`처럼 가변 인자 파라미터에 원소를 단 하나만 넘겨도 정상 처리됐다. 일관성을 위해 이런 경우 이제 스프레드 연산자를 사용해야한다.
+
+```
+foo(items = *intArrayOf(1))
+```
+
+## 코틀린 1.3
+
+### Contract, 계약
+
+```
+fun String?.isNotNull(): Boolean = thjis != null
+
+fun foo(s: String?) {
+	if (s.isNotNull()) s.length // 스마트 캐스팅 X
+}
+```
+
+널에 대한 검사를 다른 함수에서 진행하면 스마트 캐스팅이 진행되지 않았다.
+코틀린1.3에서는 컨트랙트를 사용해 이런 상황을 개선할 수 있다.
+
+> 컨트랙트는 함수의 동작을 컴파일러가 이해할 수 있게 기술하기 위한 기능이다. 현재 두 가지 종류의 컨트랙트를 지원한다.
+
+1. 함수의 반환 값과 인자 사이의 관계를 명시해서 스마트캐스트 분석을 쉽게 만들어주는 컨트랙트
+
+```
+fun require(condition: Boolean) {
+	// 이 함수가 정상적으로 반환되면, condition이 참이다. 라는 조건을 표현하는 컨트랙트
+    contraact { returns() implies condition }
+	if (!condition) throew IllegalArgumentException(...)
+}
+
+fun foo(s: String?) {
+	require(s is String)
+    // s is String 이라는 조건이 참이면 예외가 발생하지 않음으로
+    // 이하 코드에서 s 를 String으로 스마트캐스트하여 사용할 수 있다.
+}
+```
+
+2. 고차 함수가 있을 때 컴파일러가 변수 초기화 여부 분석을 더 잘 할 수 있게 돕는 컨트랙트
+
+```
+fun synchronize(lock: Any?, block: () -> Unit) {
+	// 이 함수는 block을 여기서 바로 실행하여 오직 한번만 실행한다는 뜻의 컨트랙트이다.
+    contract { callsInPlace(block, EXACTLY_ONCE) }
+}
+
+fun foo() {
+	val x: Int
+    synchronize(lock) {
+    	x = 52
+    	// 이 블록을 한 번만 실행한다는 것을 컴팡일러가 알고 있음으로 val을 재 대입한다는 오류 메세지 표시 X
+    }
+
+	println(x)
+}
+```
+
+### When의 대상을 변수에 포획
+
+`when`의 대상을 변수에 대입할 수 있다.
+
+```
+fun Request.getBody() =
+	when (val response = executeRequest()) {
+    	is Success -> response.body
+        is HttpError -> throw HttpException(response.status)
+    }
+```
+
+물론 `when`바로 앞에서 변수에 식의 결과 값을 대입하고 `when`을 사용할 수도 있다. 하지만 이 예제처럼 `when`의 괄호 안에서 변수를 선언하고 대입할 수 있으면 `when`식 안에서만 사용할 수 있는 변수가 생기므로, `when`문 밖의 네임스페이스가 더럽혀지는 일을 줄일 수 있다.
+
+### 파라미터 없는 메인
+
+프로그램 시작점은 원래 `main(args: Array<String>)`처럼 문자열 배열을 파라미터로 받아야 했지만, `args`를 사용하지 않는 경우 파라미터를 받지 않는 메임 함수를 선언할 수 있다.
+
+```
+fun main() {
+	println("Hello, world!")
+}
+```
+
+### 함수 파라미터 수 제한 완화
+
+파라미터 수를 255개까지 처리할 수 있다.
+_너무 많은 파라미터를 사용하지는 말 것_
+
+### 인라인 클래스(실험적 기능)
+
+프로퍼티가 단 하나뿐인 클래스를 `inline`이라는 키워드를 사용해 인라인 클래스로 정의할 수 있다.
+
+```
+inline class Name(val s: String)
+```
+
+코틀린 컴파일러는 인라인 클래스를 사용하는 코드를 번역할 때 내부 프로퍼티의 값을 사용해 공격적으로 최적할 수 있다. 예를 들어 별도로 생성자 등을 만들지 않고 인라인 클래스의 인스턴스 객체 대신, 내부 프로퍼티 객체를 사용하게 코드를 생성하는 등의 최적화가 가능하다.
+
+```
+fun main() {
+
+	// 아래 호출은 Name 클래스에 속한 인스턴스를 만들지 않고
+    // `Kotlin`이라는 문자열만 만든다.
+	val name = Name("Kotlin")
+    // 다음 println문을 처리할 때 Name타입의 객체에 있는 필드에 접근해 문자열을 가져오는 대신 문자열에 바로 접근한다.
+    println(name.s)
+}
+```
