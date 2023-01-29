@@ -2176,3 +2176,243 @@ fun main() {
     println(name.s)
 }
 ```
+
+### 맵 연관 쌍 추가 함수 associateWith()
+
+키 컬렉션과 값 컬렉션을 서로 `1:1`로 연관시킬 때 다음과 같이 사용할 수 있다.
+
+```
+val keys = 'a'...'f'
+val map = keys.associateWith{ it.toString().repeat(5).capitalize() }
+map.forEach { println(it) }
+// a = Aaaaa
+// b = Bbbbb
+// c = Ccccc
+// d = Ddddd
+// e = Eeeee
+```
+
+# 코투린과 Async/Await
+
+위키피디아에서의 코루틴의 정의는 다음과 같다.
+
+> 코루틴은 컴퓨터 프로그램 구성 요소 중 하나로 비선점형 멀티태스킹을 수행하는 일반화한 서브루틴이다. 코루틴은 실행을 일시 중단하고 재게할 수 있는 여러 진입 지점을 허용한다.
+
+서브루틴은 여러 명령어를 모아 이름을 부여해서 반복 호출할 수 있게 정의한 프로그램 구성 요소로, 다른 말로 함수라고 부르기도 한다.
+
+코루틴이란 서로 협력해서 실행을 주고받으면서 작동하는 여러 서브루틴을 의미한다. 예를 들어 어떤 함수 A가 실행되다가 코루틴 B를 호출하면 A가 실행되던 스레드 안에서 코루틴 B의 실행이 시작된다. 코루틴 B는 실행을 진행하다가 실행을 A에 양보한다.(`yield`명령어를 사용하는 경우) A는 다시 코루틴을 호출햇떤 바로 다음 부분부터 실행을 계속 진행하다가 또 코루틴 B를 호출한다. 이때 B가 일반적인 함수라면 로컬 변수를 초기화하면서 처음부터 실행을 다시 시작하겠지만, 코루틴이면 이전에 `yiled`로 실행을 양보했던 지점부터 실행을 계속하게 된다.
+
+## 코루틴 빌더
+
+### kotlinx.coroutines.CoroutinScope.launch
+
+`launch`는 코루틴을 잡으로 반환하며, 만들어진 코루틴은 기본적으로 즉시 실행된다. `Job`의 `cancel()`을 호출해 코루틴 실행을 중단시킬 수 있다.
+
+`launch`는 `CoroutineScope`객체가 블록의 `this`로 지정되어야 한다. (즉 `suspend`함수 내에서만 실행이 가능하다) 다음예를 보자
+
+```
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
+import java.time.ZonedDateTime
+import java.time.temporal.ChronoUnit
+
+fun now() = ZonedDateTime.now().toLocalTime().truncatedTo(ChronoUnit.MILLIS)
+
+fun log(msg: String) = println("${now()}:${Thread.currentThread()} : ${msg}")
+
+fun main() {
+    log("Main() started")
+    launchInGlobalScope()
+    log("launchInGlobalScope() excuted")
+    Thread.sleep(2000L)
+    log("main() terminated")
+}
+
+fun launchInGlobalScope() {
+    GlobalScope.launch {
+        log("coroutine started.")
+    }
+}
+
+
+```
+
+결과
+
+```
+11:28:46.646:Thread[main,5,main] : Main() started
+11:28:46.693:Thread[main,5,main] : launchInGlobalScope() excuted
+11:28:46.693:Thread[DefaultDispatcher-worker-2,5,main] : coroutine started.
+11:28:48.693:Thread[main,5,main] : main() terminated
+```
+
+위의 예에서는 `GlobalScope.launch`로 만들어낸 코루틴이 서로 다른 스레드에서 실행된다는 점이며, `GloablScope`는 메인 스레드가 실행 중인 동안만 동작을 보장한다. 즉 `Thread.sleep`을 없애면 코루틴이 아예 실행되지 않는다.
+
+이를 방지하기위해 `runBlocking()`을 사용할 수 있다. 이는 `CoroutineScope`의 확장 함수가 아닌 일반함수에서 코루틴의 실행이 끝날 때까지 현재 스레드를 블록시킨다.
+
+```
+fun main() = runBlocking {
+    log("Main() started")
+    launch {
+        launchInGlobalScope("Coroutine1", 300)
+    }
+    launch {
+        launchInGlobalScope("Coroutine2", 0)
+    }
+    log("main() terminated")
+}
+
+suspend fun launchInGlobalScope(msg: String, delayTime: Long) {
+    log("$msg started.")
+    delay(delayTime)
+    log("$msg ended.")
+}
+```
+
+결과
+
+```
+11:39:49.243:Thread[main,5,main] : Main() started
+11:39:49.249:Thread[main,5,main] : main() terminated
+11:39:49.250:Thread[main,5,main] : Coroutine1 started.
+11:39:49.254:Thread[main,5,main] : Coroutine2 started.
+11:39:49.254:Thread[main,5,main] : Coroutine2 ended.
+11:39:49.558:Thread[main,5,main] : Coroutine1 ended.
+```
+
+`runBlocking`에서의 쓰레드는 모두 `main`쓰레드에서 동작하며
+
+> `runBlocking`은 코루틴에서 사용해서는 안된다고 권장하고 있으며 suspend함수의 도메인 로직 테스트용으로만 쓰이도록 설계되었다. 또한 runBlocking의 경우는 eventLoop를 활용하여 task들을 큐로 관리한다.
+
+### kotlinx.coroutines.CoroutineScope.async
+
+`async`는 `Deffered`를 반환하며 이는 `Job`을 상속한 클래스이기 떄문에 `launch`대신 `async`를 사용해도 항상 아무 문제가 없다.
+
+즉 `Job` == `Defferd<Unit>`이라고 생각할 수도 있다.
+
+```
+fun main() = runBlocking {
+    val d1 = async { delay(1000L); 1 }
+    log("after async(d1)")
+    val d2 = async { delay(2000L); 2 }
+    log("after async(d2)")
+    val d3 = async { delay(3000L); 3 }
+    log("after async(d3)")
+
+    log("${d1.await() + d2.await() + d3.await()}")
+    log("after await all & add")
+}
+```
+
+결과
+
+```
+11:51:43.058:Thread[main,5,main] : after async(d1)
+11:51:43.062:Thread[main,5,main] : after async(d2)
+11:51:43.062:Thread[main,5,main] : after async(d3)
+// 3초 후
+11:51:44.072:Thread[main,5,main] : 6
+11:51:44.072:Thread[main,5,main] : after await all & add
+```
+
+순서대로 실행해야 했다면 6초이상이 걸리지만, 3초내 모든 작업을 수행함을 볼 수 있다. 쓰레드를 여럿 사용하는 병렬 처리와 달리 모든 `async`함수들이 메인 스레드 안에서 실행됨을 볼 수 있다.
+
+쓰레드의 개수가 한정된 경우 하나의 쓰레드에서의 병렬처리가 가능한 코루틴은 빛을 발휘할 것이다.
+
+## 코루틴 컨텍스트와 디스패쳐
+
+`launch`, `async`등은 모두 `CoroutineScope`의 확장 함수이다. 그런데 `CoroutineScope`에는 `CoroutineContext` 타입의 필드 하나만 들어있다. `CoroutineScope`는 `CoroutineContext`필드를 `launch`등의 확장 함수 내부에서 사용하기 위한 매개체 역할만을 담당한다. 원한다면 `launch`등에 `CoroutineContext`를 넘길 수도 있다는 점에서 실제로 `CoroutineScope`보다 `CoroutineContext`가 코루틴 실행에 더 중요한 의미가 있음을 유추할 수 있을 것이다.
+
+> `CoroutineContext`는 실제로 코루틴이 실행 중인 여러 작업(`job`타입)과 디스패쳐를 저장하는 일종의 맵이라 생각할 수 있다.
+
+코틀린 런타임은 이 `CoroutineContext`를 사용해서 다음에 실행할 작업을 선정하고, 어떻게 스레드에 배정할지 대한 방법을 결정한다. 다음예를 보자.
+
+```
+fun main() = runBlocking {
+    launch(Dispatchers.IO) {
+        log("run On IO Thread")
+    }
+    launch(Dispatchers.Default) {
+        log("run On Default Thread")
+    }
+    launch(Dispatchers.Unconfined) {
+        log("run On Unconfined Thread")
+    }
+}
+```
+
+같은 `launch`를 사용하더라도 전달하는 컨텍스트에 따라 서로 다른 스레드상에서 코루틴이 실행됨을 알 수 있다.
+
+### 일시 중단 함수와 빌더에 대해
+
+`launch`, `async`, `runBlocking`은 모두 코루틴 빌더이다. 이들은 코루틴을 만들어 준다.
+
+`delay()`와 `yield()`는 일시 중단 함수라고 부른다. 이외에도 다음과 같은 함수가 있다.
+
+- `withContext` 다른 컨텍스트로 코루틴을 전환한다.
+
+- `withTimeOut` 코루틴이 정해진 시간 안에 실행되지 않으면 예외를 발생시킨다.
+
+- `withTimeoutOrNull` 코루틴이 정해진 시간 안에 실행되지 않으면 `null`을 결과로 반환한다.
+
+- `awaitAll` 모든 작업의 성공을 기다린다. 작업 중 하나가 예외로 실패하면 이또한 실패한다.
+
+- `joinAll` 모든 작업이 끝날 때까지 현재 작업을 중단시킨다.
+
+코루틴내부에서 사용할 수 있는 중단함수는 어떤 동작이 필요한가??
+
+1. 코루틴에 진입할 떄와 코루틴에서 나갈 때 코루틴이 실행 중이던 상태를 저장하고 복구하는 등의 작업을 할 수 있어야 한다.
+
+2. 현재 실행 중이던 위치를 저장하고 다시 코루틴이 재개될 때 해당 위치로부터 실행을 재개할 수 있어야 한다.
+
+3. 다음에 어떤 코루틴을 실행할지 결정한다.
+
+세가지 중 마지막 동작은 코루틴 컨텍스트에 있는 디스패처에 의해 수행된다. `suspend`함수를 컴파일 하는 컴파일러는 앞의 두 가지 작업을 할 수 있는 코드를 생성해내야 한다. 이때 코틀린은 `컨티뉴에이션 패싱 스타일 변환(CPS)`과 상태기계를 활용해 코드를 생성해 낸다.
+
+`CPS`변환은 프로그램의 실행 중 특정 시점 이후에 진행해야 하는 내용을 별도의 함수로 뽑고(이런 함수를 컨티뉴에이션이라 부른다.) 그 함수에게 현재 시점까지 실행한 결과를 넘겨서 처리하게 만드는 소스코드 변환 기술이다.
+
+`CPS`를 사용하는 경우 프로그램이 다음에 해야 할 일이 항상 컨티뉴에이션이라는 함수의 형태로 전달되므로, 나중에 할일을 명확히 알 수 있고, 그 컨티뉴에이션에 넘겨야 할 값이 무엇인지도 명확하게 알 수 있기 때문에 프로그램이 실행 중이던 특정 시점의 맥락을 잘 저장했다가 필요할 떄 다시 재개할 수 있다. 콜백함수와 유사한 느낌이다.
+
+```
+suspend fun example(v: Int): Int {
+	return v*2;
+}
+```
+
+코틀린 컴파일러는 이 함수를 컴파일하면서 뒤에 Continuation을 인자로 만들어 붙여준다.
+
+```
+public static final Obejct example(int v, @Notnull Continuation var1)
+```
+
+이 함수를 호출할 때는 함수 호출이 끝난 후 수행해야 할 작업을 `var1`으로 전달하고, 함수 내부에서는 필요한 모든 일을 수행한 다음에 결과를 `var1`에 넘기는 코드를 추가한다.
+
+#### 코루틴 빌더를 직접 만드는 방법은 내용이 어려워서 패스,,, 이 쪽을 충분히 이해하지 못하더라도 `launch`, `async`, `await`정도의 기본 제공 코루틴 빌더만으로 충분히 코딩이 가능하다.
+
+---
+
+# 책을 읽으며
+
+![](https://velog.velcdn.com/images/cksgodl/post/b0082e8c-c375-4f90-8f04-605b6be584e4/image.png)
+
+#### 타켓 층
+
+이 책 또한 어느정도 자바 경험이 있는 개발자를 주요 대상으로 한다. 코틀린과 `JVM`의 상호작용의 복잡한 측면을 계속하여 이야기하는데 책을 이해하기 위한 공부가 필요하다.
+
+#### Effective Kotlin과의 비교
+
+내용의 량은 `Kotlin In Action`이 더 많고 근본있지만, 내용의 질과 가성비는 `Effective Kotlin`더 높은 것 같다.
+
+`코틀린 인 액션`은 코틀린에 대한 규칙, 정보, 특성을 모두 알려주는 느낌이면 비교적 최근에 나온 `이펙티브 코틀린`은 `코틀린 인 액션`에서 제공하는 내용을 어떻게 사용하면 좋을지 공식처럼 알려주는 느낌이다.
+
+#### 리뷰 및 느낀점
+
+나는 정말 간단하게 읽고 넘어간 책이지만(책의 내용이 너무 자세함), 자바와 코틀린의 차이와 코틀린의 특성을 깊게 공부하기 위해 좋은 책이다.
+
+하지만 책의 출판년도가 17년도이며 책 내부에서는 코틀린 1.3업데이트 까지 다루고 있지만, 현재는 코틀린 1.8버전까지 나왔기에 내용 자체가 좋게 말하면 근본이 있지만, 오래된 소스도 많다.(직접 예제를 쳐보는데 Deprecated된 메소드라고 떠서 이게 맞나?? 라는 생각이 든 예제가 몇개 있다.)
+
+전공책을 느끼며 항상 느끼는 점은 내용이 어렵다. 이 책은 더 어렵다. 어노테이션 부분, 코루틴의 빌더함수를 직접만드는 부분등은 내 수준으로는 도저히 이해가 안되서 그냥 넘어갔다. 후에 좀 더 공부하고 복수하러 돌아와야 겠다.
+
+600페이지 가량으로 코틀린에 대해 설명하는데 내용이 너무 자게하고 또 복잡하다. 코틀린을 곱씹어 먹을 예정이라면 추천하지만, 입문하거나 간단하게 살펴보기엔 적당하지 않은 책이다.
+
+> 자세하고 복잡하지만 코틀린의 근본에 대해 배울 수 있는 책
