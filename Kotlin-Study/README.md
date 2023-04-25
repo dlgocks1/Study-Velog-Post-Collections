@@ -4,8 +4,8 @@
 
 # 책 리뷰들
 
-## [Effective Kotlin책 리뷰](https://github.com/dlgocks1/Kotlin-Study/tree/main/EffectiveKotlin)
+## [Effective Kotlin책 리뷰](https://github.com/dlgocks1/Study_Collections/tree/main/Kotlin-Study/EffectiveKotlin/%EC%B1%85%EB%A6%AC%EB%B7%B0)
 
-## [Kotlin In Action을 읽으며 기억할만 한 것](https://github.com/dlgocks1/Kotlin-Study/tree/main/%5BKotlin%20In%20Action%5D%20%EC%9D%BD%EC%9C%BC%EB%A9%B0%20%EA%B8%B0%EC%96%B5%ED%95%A0%EB%A7%8C%20%ED%95%9C%20%EA%B2%83)
+## [Kotlin In Action을 읽으며 기억할만 한 것](https://github.com/dlgocks1/Study_Collections/tree/main/Kotlin-Study/%5BKotlin%20In%20Action%5D%20%EC%9D%BD%EC%9C%BC%EB%A9%B0%20%EA%B8%B0%EC%96%B5%ED%95%A0%EB%A7%8C%20%ED%95%9C%20%EA%B2%83)
 
-## [코틀린 개발자가 Clean Code를 읽으며 기억할만한 것](https://github.com/dlgocks1/Kotlin-Study/tree/main/%EC%BD%94%ED%8B%80%EB%A6%B0%20%EA%B0%9C%EB%B0%9C%EC%9E%90%EA%B0%80%20Clean%20Code%EB%A5%BC%20%EC%9D%BD%EC%9C%BC%EB%A9%B0%20%EA%B8%B0%EC%96%B5%ED%95%A0%EB%A7%8C%ED%95%9C%20%EA%B2%83)
+## [코틀린 개발자가 Clean Code를 읽으며 기억할만한 것](https://github.com/dlgocks1/Study_Collections/tree/main/Kotlin-Study/%EC%BD%94%ED%8B%80%EB%A6%B0%20%EA%B0%9C%EB%B0%9C%EC%9E%90%EA%B0%80%20Clean%20Code%EB%A5%BC%20%EC%9D%BD%EC%9C%BC%EB%A9%B0%20%EA%B8%B0%EC%96%B5%ED%95%A0%EB%A7%8C%ED%95%9C%20%EA%B2%833)
