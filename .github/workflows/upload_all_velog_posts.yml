@@ -18,7 +18,7 @@ jobs:
       run: |
         git config --global user.name 'dlgocks1'
         git config --global user.email 'cksgodl1@naver.com'
-        git remote set-url origin https://dlgocks1:${{ secrets.GH_PAT }}@github.com/dlgocks1/velog_migration_scripts.git
+        git remote set-url origin https://dlgocks1:${{ secrets.GH_PAT }}@github.com/dlgocks1/Study-Velog-Post-Collections.git
 
     # 원격 변경 사항을 로컬에 적용
     - name: Pull changes from remote
