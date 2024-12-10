@@ -27,9 +27,7 @@ print(f"Today: {current_date}")
 for post in recent_posts:
     released_at_date = datetime.fromisoformat(post["released_at"].replace("Z", "+00:00")).date()
     print(f"Read Post - {post['title']} ({released_at_date}) ")
-    if released_at_date == current_date:
-        filtered_posts.append(post)
-
+    
 for today_post in filtered_posts:
     posts_dir = os.path.join(repo_path, today_post['series']['name'])
     if not os.path.exists(posts_dir):
